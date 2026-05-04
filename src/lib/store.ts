@@ -51,6 +51,14 @@ export interface GroceryList {
   items: GroceryItem[];
   photoUris: string[];
 }
+
+export interface VoiceMemo {
+  id: string;
+  uri: string;
+  durationMs: number;
+  createdAt: string;
+}
+
 export function autoCategorize(name: string): ExpenseCategory {
   const lower = name.toLowerCase();
   if (lower.match(/uber|taxi|metro|train|bus|fuel|gas|lyft|careem/)) return 'Transport';

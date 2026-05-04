@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLedgr } from '../lib/LedgrContext';
 import { useTheme, useThemeColors } from '../lib/ThemeContext';
 import { ExpenseCategory, Budget, DEFAULT_CATEGORIES } from '../lib/store';
-import { Coffee, Car, Home as HomeIcon, ShoppingBag, Heart, MoreHorizontal, ShoppingBasket, PlusCircle, Pencil, Trash2, Sun, Moon } from 'lucide-react-native';
+import { Coffee, Car, Home as HomeIcon, ShoppingBag, Heart, MoreHorizontal, ShoppingBasket, PlusCircle, Pencil, Trash2, Sun, Moon, Mic } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSnackbar } from '../components/Snackbar';
 import DeleteCategoryModal from '../components/DeleteCategoryModal';
@@ -14,6 +14,7 @@ import { exportExpensesToXLSX, importExpensesFromFile } from '../lib/dateUtils';
 import { Download, Upload, Share, HardDrive, Trash2 as TrashIcon } from 'lucide-react-native';
 import CustomAlert from '../components/CustomAlert';
 import { useGrocery } from '../lib/GroceryContext';
+import { useVoiceMemos } from '../lib/VoiceMemoContext';
 import { Alert } from 'react-native';
 
 const CATEGORY_ICONS: Record<ExpenseCategory, any> = {
@@ -31,12 +32,24 @@ export default function SettingsScreen() {
   const { showSnackbar } = useSnackbar();
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { clearCompletedLists, getStorageSize, lists: groceryLists } = useGrocery();
+  const { clearCompletedLists, getStorageSize: getGroceryStorage, lists: groceryLists } = useGrocery();
+  const { clearAllMemos, getStorageSize: getVoiceStorage, memos } = useVoiceMemos();
   const [groceryStorageBytes, setGroceryStorageBytes] = useState(0);
+  const [voiceStorageBytes, setVoiceStorageBytes] = useState(0);
 
   useEffect(() => {
-    getStorageSize().then(setGroceryStorageBytes);
-  }, [groceryLists]);
+    let active = true;
+    const fetchStorage = async () => {
+      const gSize = await getGroceryStorage();
+      const vSize = await getVoiceStorage();
+      if (active) {
+        setGroceryStorageBytes(gSize);
+        setVoiceStorageBytes(vSize);
+      }
+    };
+    fetchStorage();
+    return () => { active = false; };
+  }, [groceryLists, memos]);
 
   const formatBytes = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`;
@@ -45,9 +58,14 @@ export default function SettingsScreen() {
   };
 
   const [alertVisible, setAlertVisible] = useState(false);
+  const [voiceAlertVisible, setVoiceAlertVisible] = useState(false);
 
   const handleClearCompleted = () => {
     setAlertVisible(true);
+  };
+
+  const handleClearVoice = () => {
+    setVoiceAlertVisible(true);
   };
 
   const [localBudget, setLocalBudget] = useState<Budget>(budget);
@@ -401,19 +419,29 @@ export default function SettingsScreen() {
               <HardDrive color={colors.accent} size={20} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.dataActionTitle, { color: colors.textPrimary }]}>Grocery Data</Text>
+              <Text style={[styles.dataActionTitle, { color: colors.textPrimary }]}>Grocery & Voice Data</Text>
               <Text style={[styles.dataActionSub, { color: colors.textTertiary }]}>
-                {formatBytes(groceryStorageBytes)} used · {groceryLists.filter(l => l.status === 'complete').length} completed {groceryLists.filter(l => l.status === 'complete').length === 1 ? 'list' : 'lists'}
+                {formatBytes(groceryStorageBytes + voiceStorageBytes)} used · {groceryLists.filter(l => l.status === 'complete').length} completed lists · {memos.length} voice memos
               </Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={[styles.smallActionBtn, { backgroundColor: colors.dangerBg, borderColor: `${colors.danger}30`, marginHorizontal: 16, marginBottom: 16, height: 44, justifyContent: 'center' }]}
-            onPress={handleClearCompleted}
-            disabled={groceryLists.filter(l => l.status === 'complete').length === 0}
-          >
-            <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.danger, opacity: groceryLists.filter(l => l.status === 'complete').length === 0 ? 0.4 : 1 }}>Clear All Completed Lists</Text>
-          </TouchableOpacity>
+          <View style={{ gap: 8, paddingHorizontal: 16, marginBottom: 16 }}>
+            <TouchableOpacity
+              style={[styles.smallActionBtn, { backgroundColor: colors.dangerBg, borderColor: `${colors.danger}30`, height: 44, justifyContent: 'center' }]}
+              onPress={handleClearCompleted}
+              disabled={groceryLists.filter(l => l.status === 'complete').length === 0}
+            >
+              <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.danger, opacity: groceryLists.filter(l => l.status === 'complete').length === 0 ? 0.4 : 1 }}>Clear All Completed Lists</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.smallActionBtn, { backgroundColor: colors.dangerBg, borderColor: `${colors.danger}30`, height: 44, justifyContent: 'center' }]}
+              onPress={handleClearVoice}
+              disabled={memos.length === 0}
+            >
+              <Text style={{ fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: colors.danger, opacity: memos.length === 0 ? 0.4 : 1 }}>Clear All Voice Memos</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* DEV TOOLS */}
@@ -456,6 +484,21 @@ export default function SettingsScreen() {
             showSnackbar('Completed lists cleared', 'success');
           }}
           onCancel={() => setAlertVisible(false)}
+        />
+
+        <CustomAlert
+          visible={voiceAlertVisible}
+          title="Clear Voice Memos"
+          message="This will permanently delete all saved voice memos. This cannot be undone."
+          confirmLabel="Clear Memos"
+          confirmVariant="danger"
+          Icon={Mic}
+          onConfirm={async () => {
+            setVoiceAlertVisible(false);
+            await clearAllMemos();
+            showSnackbar('Voice memos cleared', 'success');
+          }}
+          onCancel={() => setVoiceAlertVisible(false)}
         />
     </SafeAreaView>  );
 }

@@ -6,6 +6,7 @@ import { useThemeColors } from '../../lib/ThemeContext';
 import { useGrocery } from '../../lib/GroceryContext';
 import { GroceryList } from '../../lib/store';
 import GroceryListDetailModal from './GroceryListDetailModal';
+import VoiceMemosList from './VoiceMemosList';
 
 interface Props {
   scrollContainerStyle?: any;
@@ -138,12 +139,12 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
         </View>
       ) : (
         <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.surface, borderColor: colors.cardBorderSubtle }]}
+          style={[styles.addBtn, { backgroundColor: colors.accentBg, borderColor: `${colors.accent}20` }]}
           onPress={() => setShowCreateInput(true)}
           activeOpacity={0.7}
         >
-          <Plus color={colors.accent} size={20} />
-          <Text style={[styles.addBtnText, { color: colors.accent }]}>New Grocery List</Text>
+          <Plus color={colors.accent} size={18} strokeWidth={2.5} />
+          <Text style={[styles.addBtnText, { color: colors.accent }]}>New List</Text>
         </TouchableOpacity>
       )}
 
@@ -181,6 +182,9 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
           setSelectedList(null);
         }}
       />
+
+      {/* Voice Memos Section */}
+      <VoiceMemosList />
     </View>
   );
 }
@@ -191,12 +195,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    height: 56,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    marginBottom: 20,
+    gap: 8,
+    height: 40,
+    paddingHorizontal: 20,
+    borderRadius: 100,
+    borderWidth: 1,
+    alignSelf: 'center',
+    marginBottom: 24,
+    marginTop: 8,
   },
   addBtnText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
   createCard: {

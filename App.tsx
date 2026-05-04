@@ -19,6 +19,7 @@ import { Target, LayoutDashboard, Settings, BarChart2, Calendar as CalendarIcon,
 
 import { LedgrProvider, useLedgr } from './src/lib/LedgrContext';
 import { GroceryProvider } from './src/lib/GroceryContext';
+import { VoiceMemoProvider } from './src/lib/VoiceMemoContext';
 import { SnackbarProvider, useSnackbar } from './src/components/Snackbar';
 import { ThemeProvider, useTheme } from './src/lib/ThemeContext';
 import TrackScreen from './src/screens/TrackScreen';
@@ -168,9 +169,11 @@ export default function App() {
       <ThemeProvider>
         <LedgrProvider>
           <GroceryProvider>
-            <SnackbarProvider>
-              <Navigation />
-            </SnackbarProvider>
+            <VoiceMemoProvider>
+              <SnackbarProvider>
+                <Navigation />
+              </SnackbarProvider>
+            </VoiceMemoProvider>
           </GroceryProvider>
         </LedgrProvider>
       </ThemeProvider>
