@@ -126,7 +126,7 @@ export default function TrackScreen() {
       name: desc,
       amount: amt,
       category: selectedCategory || autoCategorize(desc),
-      date: expenseDate.toISOString()
+      date: format(expenseDate, "yyyy-MM-dd'T'HH:mm:ss")
     });
     setDesc('');
     setAmountStr('');
@@ -446,12 +446,19 @@ export default function TrackScreen() {
           </TouchableOpacity>
 
           {expenses.length > 0 && (() => {
-            const exp = expenses[0];
+            // Find the most recently CREATED expense (not by transaction date)
+            const exp = [...expenses].sort((a, b) => {
+              const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              // If both lack createdAt (legacy data), fall back to array position (id encodes timestamp)
+              if (aTime === 0 && bTime === 0) return 0;
+              return bTime - aTime;
+            })[0];
             const expDesc = exp.name.replace(/^Paid:\s*/i, '');
             return (
               <TouchableOpacity onPress={() => handleEditPress(exp)}>
                 <View style={[styles.latestChipRow, { backgroundColor: colors.accentBg, borderColor: `${colors.accent}30` }]}>
-                  <Text style={[styles.latestChipLabel, { color: colors.textTertiary }]}>LAST</Text>
+                  <Text style={[styles.latestChipLabel, { color: colors.textTertiary }]}>LAST ADDED</Text>
                   <View style={[styles.latestChipCat, { backgroundColor: colors.accentBg }]}>
                     <Text style={[styles.latestChipCatText, { color: colors.accent }]}>{exp.category.toUpperCase()}</Text>
                   </View>

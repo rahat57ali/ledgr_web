@@ -46,7 +46,7 @@ export default function BillsScreen() {
       showSnackbar('Please enter name and amount', 'error');
       return;
     }
-    await addBill({ name, amount: parseFloat(amount), dueDate: date.toISOString(), category: 'Bills', isPaid: false });
+    await addBill({ name, amount: parseFloat(amount), dueDate: format(date, "yyyy-MM-dd'T'HH:mm:ss"), category: 'Bills', isPaid: false });
     setName(''); setAmount(''); setDate(new Date()); setIsModalVisible(false);
     showSnackbar('Bill added successfully');
   };
@@ -58,9 +58,9 @@ export default function BillsScreen() {
 
   const handleConfirmPayment = async (amount: number) => {
     if (!selectedBill) return;
-    await addExpense({ name: `Paid: ${selectedBill.name}`, amount, category: 'Bills', date: new Date().toISOString() });
+    await addExpense({ name: `Paid: ${selectedBill.name}`, amount, category: 'Bills', date: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss") });
     const nextDueDate = addDays(new Date(selectedBill.dueDate), 30);
-    await updateBill({ ...selectedBill, dueDate: nextDueDate.toISOString(), isPaid: false });
+    await updateBill({ ...selectedBill, dueDate: format(nextDueDate, "yyyy-MM-dd'T'HH:mm:ss"), isPaid: false });
     setIsPayModalVisible(false);
     showSnackbar(`Paid ${selectedBill.name} - PKR ${amount.toLocaleString()}`);
   };

@@ -46,7 +46,7 @@ export default function InsightsScreen() {
 
   // Filter Data
   const monthExpenses = useMemo(() => {
-    return expenses.filter(e => e.date.startsWith(monthStr));
+    return expenses.filter(e => format(new Date(e.date), 'yyyy-MM') === monthStr);
   }, [expenses, monthStr]);
 
   const totalSpent = useMemo(() => monthExpenses.reduce((sum, e) => sum + e.amount, 0), [monthExpenses]);
@@ -142,7 +142,7 @@ export default function InsightsScreen() {
   const topDays = useMemo(() => {
     const spendByDate: Record<string, { date: string, total: number, items: Expense[] }> = {};
     monthExpenses.forEach(e => {
-      const d = e.date.split('T')[0];
+      const d = format(new Date(e.date), 'yyyy-MM-dd');
       if (!spendByDate[d]) spendByDate[d] = { date: d, total: 0, items: [] };
       spendByDate[d].total += e.amount;
       spendByDate[d].items.push(e);

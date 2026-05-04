@@ -119,7 +119,7 @@ export const LedgrProvider = ({ children }: { children: ReactNode }) => {
           // Calculate spent in prevMonth using parsed expenses
           const expensesList: Expense[] = savedExpenses ? JSON.parse(savedExpenses) : [];
           const spent = expensesList
-            .filter(e => e.date.startsWith(prevMonth))
+            .filter(e => format(new Date(e.date), 'yyyy-MM') === prevMonth)
             .reduce((sum, e) => sum + e.amount, 0);
             
           const remaining = finalBudget.total - spent;
@@ -181,7 +181,8 @@ export const LedgrProvider = ({ children }: { children: ReactNode }) => {
       ...expense,
       category: finalCategory,
       id: generateId(),
-      date: expense.date || new Date().toISOString(),
+      date: expense.date || format(new Date(), "yyyy-MM-dd'T'HH:mm:ss"),
+      createdAt: new Date().toISOString(),
     };
     
     const updated = [newExpense, ...expenses].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -320,7 +321,7 @@ export const LedgrProvider = ({ children }: { children: ReactNode }) => {
   const simulateRollover = async () => {
     const currentMonth = format(new Date(), 'yyyy-MM');
     const spent = expenses
-      .filter(e => e.date.startsWith(currentMonth))
+      .filter(e => format(new Date(e.date), 'yyyy-MM') === currentMonth)
       .reduce((sum, e) => sum + e.amount, 0);
     
     setMonthEndData({

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { format } from 'date-fns';
 import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,8 +43,8 @@ export default function DashboardScreen() {
   const [isTransactionsModalVisible, setIsTransactionsModalVisible] = useState(false);
 
   const currentMonthExpenses = React.useMemo(() => {
-    const activeMonth = budget.budgetMonth || new Date().toISOString().slice(0, 7);
-    return expenses.filter(e => e.date.startsWith(activeMonth));
+    const activeMonth = budget.budgetMonth || format(new Date(), 'yyyy-MM');
+    return expenses.filter(e => format(new Date(e.date), 'yyyy-MM') === activeMonth);
   }, [expenses, budget.budgetMonth]);
 
   const totalSpent = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);

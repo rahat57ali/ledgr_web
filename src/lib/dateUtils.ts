@@ -31,8 +31,8 @@ export function getDaysInCurrentMonth(): number {
  * Checks if a given date string is today.
  */
 export function isToday(dateStr: string): boolean {
-  const todayDate = new Date().toISOString().split('T')[0];
-  return dateStr.split('T')[0] === todayDate;
+  const todayDate = formatDate(new Date(), 'yyyy-MM-dd');
+  return formatDate(new Date(dateStr), 'yyyy-MM-dd') === todayDate;
 }
 
 /**

@@ -28,6 +28,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLedgr } from '../lib/LedgrContext';
 import { Expense, ExpenseCategory } from '../lib/store';
+import { format } from 'date-fns';
 import { useSnackbar } from './Snackbar';
 import { useThemeColors } from '../lib/ThemeContext';
 
@@ -81,7 +82,7 @@ export default function EditExpenseModal({ visible, onClose, expense }: EditExpe
       name,
       amount: amt,
       category,
-      date: date.toISOString(),
+      date: format(date, "yyyy-MM-dd'T'HH:mm:ss"),
     });
 
     showSnackbar('Expense updated successfully!', 'success');

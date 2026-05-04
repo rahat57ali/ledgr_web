@@ -10,6 +10,7 @@ export interface Expense {
   amount: number;
   category: ExpenseCategory;
   date: string;
+  createdAt?: string; // ISO timestamp of when the expense was added to the app
   notes?: string;
 }
 
