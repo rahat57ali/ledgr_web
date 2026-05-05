@@ -40,6 +40,7 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
   const soundRef = useRef<Audio.Sound | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const appState = useRef(AppState.currentState);
+  const isUserHoldingRef = useRef(false);
 
   // Initialize
   useEffect(() => {
@@ -89,9 +90,13 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
 
   const startRecording = async () => {
     try {
+      isUserHoldingRef.current = true;
       if (permissionStatus !== 'granted') {
         const granted = await requestPermissions();
-        if (!granted) return;
+        if (!granted) {
+          isUserHoldingRef.current = false;
+          return;
+        }
       }
 
       await Audio.setAudioModeAsync({
@@ -102,6 +107,13 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY
       );
+
+      // If user released while we were initializing, stop immediately
+      if (!isUserHoldingRef.current) {
+        await recording.stopAndUnloadAsync();
+        return;
+      }
+
       recordingRef.current = recording;
       setIsRecording(true);
       setRecordingDuration(0);
@@ -117,11 +129,13 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
         }
       }, 100);
     } catch (err) {
+      isUserHoldingRef.current = false;
       console.error('Failed to start recording', err);
     }
   };
 
   const stopRecording = async () => {
+    isUserHoldingRef.current = false;
     if (!recordingRef.current) return;
 
     try {

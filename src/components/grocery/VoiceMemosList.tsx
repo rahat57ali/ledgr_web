@@ -15,6 +15,7 @@ export default function VoiceMemosList() {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (isRecording) {
@@ -107,33 +108,42 @@ export default function VoiceMemosList() {
         </View>
       )}
 
-      <TouchableOpacity
-        style={[
-          styles.recordBtn, 
-          { backgroundColor: isRecording ? colors.dangerBg : colors.accentBg, borderColor: isRecording ? colors.danger : `${colors.accent}20` }
-        ]}
-        onPress={isRecording ? stopRecording : startRecording}
-        disabled={permissionStatus === 'denied'}
-        activeOpacity={0.7}
-      >
-        <View style={styles.recordContent}>
-          {isRecording ? (
-            <>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <Circle color={colors.danger} size={14} fill={colors.danger} />
-              </Animated.View>
-              <Text style={[styles.recordText, { color: colors.danger, fontSize: 13 }]}>
-                STOP ({formatDuration(recordingDuration)})
-              </Text>
-            </>
-          ) : (
-            <>
-              <Mic color={colors.accent} size={16} strokeWidth={2.5} />
-              <Text style={[styles.recordText, { color: colors.accent }]}>Record Memo</Text>
-            </>
-          )}
-        </View>
-      </TouchableOpacity>
+      <Animated.View style={{ transform: [{ scale: scaleAnim }], alignSelf: 'center', width: 'auto' }}>
+        <TouchableOpacity
+          style={[
+            styles.recordBtn, 
+            { backgroundColor: isRecording ? colors.dangerBg : colors.accentBg, borderColor: isRecording ? colors.danger : `${colors.accent}20` }
+          ]}
+          onPressIn={() => {
+            Animated.spring(scaleAnim, { toValue: 1.05, useNativeDriver: true }).start();
+            startRecording();
+          }}
+          onPressOut={() => {
+            Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+            stopRecording();
+          }}
+          disabled={permissionStatus === 'denied'}
+          activeOpacity={0.9}
+        >
+          <View style={styles.recordContent}>
+            {isRecording ? (
+              <>
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                  <Circle color={colors.danger} size={14} fill={colors.danger} />
+                </Animated.View>
+                <Text style={[styles.recordText, { color: colors.danger, fontSize: 13 }]}>
+                  RECORDING... ({formatDuration(recordingDuration)})
+                </Text>
+              </>
+            ) : (
+              <>
+                <Mic color={colors.accent} size={16} strokeWidth={2.5} />
+                <Text style={[styles.recordText, { color: colors.accent }]}>Hold to Record</Text>
+              </>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
 
       <View style={styles.memoList}>
         {memos.length > 0 ? (
