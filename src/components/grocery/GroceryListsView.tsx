@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, ShoppingBasket, Camera, Check, ClipboardList } from 'lucide-react-native';
 import { useThemeColors } from '../../lib/ThemeContext';
@@ -14,6 +15,7 @@ interface Props {
 
 export default function GroceryListsView({ scrollContainerStyle }: Props) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const { lists, createList, addPhoto } = useGrocery();
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -107,71 +109,97 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Create new list input */}
-      {showCreateInput ? (
-        <View style={[styles.createCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-          <TextInput
-            style={[styles.createInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
-            placeholder="List name (e.g. Weekly Groceries)"
-            placeholderTextColor={colors.textMuted}
-            value={newTitle}
-            onChangeText={setNewTitle}
-            autoFocus
-            returnKeyType="done"
-            onSubmitEditing={handleCreate}
-          />
-          <View style={styles.createActions}>
-            <TouchableOpacity
-              style={[styles.createBtn, { backgroundColor: colors.closeBtnBg }]}
-              onPress={() => { setShowCreateInput(false); setNewTitle(''); }}
-            >
-              <Text style={[styles.createBtnText, { color: colors.textSecondary }]}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.createBtn, { backgroundColor: colors.saveBtnBg, opacity: newTitle.trim() ? 1 : 0.4 }]}
-              onPress={handleCreate}
-              disabled={!newTitle.trim()}
-            >
-              <Text style={[styles.createBtnText, { color: colors.saveBtnText }]}>Create</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ) : (
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: colors.accentBg, borderColor: `${colors.accent}20` }]}
-          onPress={() => setShowCreateInput(true)}
-          activeOpacity={0.7}
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* TOP SECTION: Grocery Lists (Flexible height) */}
+      <View style={styles.topSection}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollPadding}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Plus color={colors.accent} size={18} strokeWidth={2.5} />
-          <Text style={[styles.addBtnText, { color: colors.accent }]}>New List</Text>
-        </TouchableOpacity>
-      )}
+          {/* Create new list input */}
+          {showCreateInput ? (
+            <View style={[styles.createCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+              <TextInput
+                style={[styles.createInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                placeholder="List name (e.g. Weekly Groceries)"
+                placeholderTextColor={colors.textMuted}
+                value={newTitle}
+                onChangeText={setNewTitle}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={handleCreate}
+              />
+              <View style={styles.createActions}>
+                <TouchableOpacity
+                  style={[styles.createBtn, { backgroundColor: colors.closeBtnBg }]}
+                  onPress={() => { setShowCreateInput(false); setNewTitle(''); }}
+                >
+                  <Text style={[styles.createBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.createBtn, { backgroundColor: colors.saveBtnBg, opacity: newTitle.trim() ? 1 : 0.4 }]}
+                  onPress={handleCreate}
+                  disabled={!newTitle.trim()}
+                >
+                  <Text style={[styles.createBtnText, { color: colors.saveBtnText }]}>Create</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.addBtn, { backgroundColor: colors.accentBg, borderColor: `${colors.accent}20` }]}
+              onPress={() => setShowCreateInput(true)}
+              activeOpacity={0.7}
+            >
+              <Plus color={colors.accent} size={18} strokeWidth={2.5} />
+              <Text style={[styles.addBtnText, { color: colors.accent }]}>New List</Text>
+            </TouchableOpacity>
+          )}
 
-      {/* Active Lists */}
-      {activeLists.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>ACTIVE</Text>
-          {activeLists.map(renderListCard)}
-        </View>
-      )}
+          {/* Active Lists */}
+          {activeLists.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>ACTIVE</Text>
+              {activeLists.map(renderListCard)}
+            </View>
+          )}
 
-      {/* Completed Lists */}
-      {completedLists.length > 0 && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>COMPLETED</Text>
-          {completedLists.map(renderListCard)}
-        </View>
-      )}
+          {/* Completed Lists */}
+          {completedLists.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>COMPLETED</Text>
+              {completedLists.map(renderListCard)}
+            </View>
+          )}
 
-      {/* Empty State */}
-      {lists.length === 0 && !showCreateInput && (
-        <View style={styles.emptyState}>
-          <ClipboardList color={colors.textMuted} size={48} />
-          <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No grocery lists yet</Text>
-          <Text style={[styles.emptySub, { color: colors.textTertiary }]}>Tap the button above to create your first list</Text>
-        </View>
-      )}
+          {/* Empty State */}
+          {lists.length === 0 && !showCreateInput && (
+            <View style={styles.emptyState}>
+              <ClipboardList color={colors.textMuted} size={48} />
+              <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>No grocery lists yet</Text>
+              <Text style={[styles.emptySub, { color: colors.textTertiary }]}>Tap the button above to create your first list</Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+
+      {/* FIXED DIVIDER */}
+      <View style={[styles.divider, { backgroundColor: colors.divider }]}>
+        <Text style={[styles.dividerLabel, { color: colors.textTertiary, backgroundColor: colors.background }]}>
+          VOICE MEMOS
+        </Text>
+      </View>
+
+      {/* BOTTOM SECTION: Voice Memos (Fixed height) */}
+      <View style={styles.bottomSection}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollPadding}
+          showsVerticalScrollIndicator={false}
+        >
+          <VoiceMemosList />
+        </ScrollView>
+      </View>
 
       {/* Detail Modal */}
       <GroceryListDetailModal
@@ -182,15 +210,30 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
           setSelectedList(null);
         }}
       />
-
-      {/* Voice Memos Section */}
-      <VoiceMemosList />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 20 },
+  container: { flex: 1 },
+  topSection: { flex: 1 },
+  bottomSection: { height: 280 },
+  scrollPadding: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  divider: {
+    height: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  dividerLabel: {
+    paddingHorizontal: 12,
+    fontFamily: 'Inter_800ExtraBold',
+    fontSize: 10,
+    letterSpacing: 2,
+    position: 'absolute',
+    opacity: 0.8,
+  },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -485,17 +485,9 @@ export default function TrackScreen() {
         </KeyboardAwareScrollView>
 
         {/* GROCERY LISTS PAGE */}
-        <KeyboardAwareScrollView
-          style={{ width: SCREEN_WIDTH }}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: 20 }]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          extraScrollHeight={120}
-          enableOnAndroid={true}
-          keyboardOpeningTime={0}
-        >
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
           <GroceryListsView />
-        </KeyboardAwareScrollView>
+        </View>
       </ScrollView>
 
       <EditExpenseModal

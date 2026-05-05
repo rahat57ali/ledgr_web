@@ -95,12 +95,6 @@ export default function VoiceMemosList() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.divider, { backgroundColor: colors.divider }]}>
-        <Text style={[styles.dividerLabel, { color: colors.textTertiary, backgroundColor: colors.background }]}>
-          VOICE MEMOS
-        </Text>
-      </View>
-
       {permissionStatus === 'denied' && (
         <View style={[styles.permissionNotice, { backgroundColor: colors.accentBg }]}>
           <Info color={colors.accent} size={16} />
@@ -158,22 +152,7 @@ export default function VoiceMemosList() {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: 10 },
-  divider: {
-    height: 1,
-    width: '100%',
-    marginVertical: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dividerLabel: {
-    paddingHorizontal: 12,
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 2,
-    position: 'absolute',
-    opacity: 0.8,
-  },
+  container: { flex: 1 },
   recordBtn: {
     flexDirection: 'row',
     alignItems: 'center',
