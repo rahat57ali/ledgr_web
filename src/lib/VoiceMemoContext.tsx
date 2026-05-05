@@ -110,7 +110,11 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
 
       // If user released while we were initializing, stop immediately
       if (!isUserHoldingRef.current) {
-        await recording.stopAndUnloadAsync();
+        try {
+          await recording.stopAndUnloadAsync();
+        } catch (e) {
+          // Ignore 'no valid audio data' error for very fast aborts
+        }
         return;
       }
 

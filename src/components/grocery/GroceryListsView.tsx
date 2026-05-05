@@ -16,7 +16,7 @@ interface Props {
 export default function GroceryListsView({ scrollContainerStyle }: Props) {
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
-  const { lists, createList, addPhoto } = useGrocery();
+  const { lists, createList } = useGrocery();
   const [showCreateInput, setShowCreateInput] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [selectedList, setSelectedList] = useState<GroceryList | null>(null);
@@ -157,21 +157,8 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
             </TouchableOpacity>
           )}
 
-          {/* Active Lists */}
-          {activeLists.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>ACTIVE</Text>
-              {activeLists.map(renderListCard)}
-            </View>
-          )}
-
-          {/* Completed Lists */}
-          {completedLists.length > 0 && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>COMPLETED</Text>
-              {completedLists.map(renderListCard)}
-            </View>
-          )}
+          {/* All Lists (Active first, then completed) */}
+          {[...activeLists, ...completedLists].map(renderListCard)}
 
           {/* Empty State */}
           {lists.length === 0 && !showCreateInput && (
@@ -217,13 +204,14 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   topSection: { flex: 1 },
-  bottomSection: { height: 280 },
-  scrollPadding: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  bottomSection: { height: 280, overflow: 'hidden' },
+  scrollPadding: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
   divider: {
     height: 1,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    marginVertical: 8,
     zIndex: 10,
   },
   dividerLabel: {
@@ -244,8 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 1,
     alignSelf: 'center',
-    marginBottom: 24,
-    marginTop: 8,
+    marginBottom: 16,
   },
   addBtnText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
   createCard: {
@@ -277,15 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   createBtnText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
-  section: { marginBottom: 12 },
-  sectionLabel: {
-    fontFamily: 'Inter_800ExtraBold',
-    fontSize: 10,
-    letterSpacing: 2,
-    marginBottom: 12,
-    marginTop: 8,
-    opacity: 0.6,
-  },
+
   listCard: {
     borderRadius: 20,
     padding: 16,
@@ -322,7 +301,7 @@ const styles = StyleSheet.create({
   photoBadgeText: { fontFamily: 'Inter_800ExtraBold', fontSize: 9 },
   progressBarBg: { height: 4, borderRadius: 2, overflow: 'hidden' },
   progressBarFill: { height: '100%', borderRadius: 2 },
-  emptyState: { alignItems: 'center', paddingTop: 80 },
+  emptyState: { alignItems: 'center', paddingTop: 40 },
   emptyTitle: { fontFamily: 'Outfit_700Bold', fontSize: 20, marginTop: 20 },
   emptySub: { fontFamily: 'Inter_500Medium', fontSize: 14, marginTop: 8, textAlign: 'center', paddingHorizontal: 40, lineHeight: 20 },
 });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Mic, Play, Pause, Trash2, Check, X, Circle, Info } from 'lucide-react-native';
 import { useThemeColors } from '../../lib/ThemeContext';
 import { useVoiceMemos } from '../../lib/VoiceMemoContext';
@@ -16,6 +17,8 @@ export default function VoiceMemosList() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  const pressInTimeRef = React.useRef(0);
+  const isToggleModeRef = React.useRef(false);
 
   useEffect(() => {
     if (isRecording) {
@@ -42,9 +45,10 @@ export default function VoiceMemosList() {
     const isDeleting = deletingId === memo.id;
 
     return (
-      <View 
-        key={memo.id} 
-        style={[styles.memoCard, { backgroundColor: colors.pillBg, borderColor: colors.cardBorderSubtle }]}
+      <LinearGradient
+        key={memo.id}
+        colors={[colors.gradientStart, colors.gradientEnd]}
+        style={[styles.memoCard, { borderColor: colors.cardBorderSubtle }]}
       >
         <View style={styles.memoInfo}>
           <Text style={[styles.memoDate, { color: colors.textPrimary }]}>
@@ -57,40 +61,46 @@ export default function VoiceMemosList() {
 
         <View style={styles.memoActions}>
           <TouchableOpacity 
-            style={[styles.actionBtn, { backgroundColor: colors.accentBg }]}
+            style={styles.inlineBtn}
             onPress={() => isPlaying ? pauseMemo() : playMemo(memo.id)}
+            activeOpacity={0.6}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             {isPlaying 
-              ? <Pause color={colors.accent} size={18} fill={colors.accent} />
-              : <Play color={colors.accent} size={18} fill={colors.accent} />
+              ? <Pause color={colors.accent} size={18} />
+              : <Play color={colors.accent} size={18} />
             }
           </TouchableOpacity>
 
           {isDeleting ? (
             <View style={styles.confirmRow}>
               <TouchableOpacity 
-                style={[styles.confirmBtn, { backgroundColor: colors.successBg }]}
-                onPress={() => deleteMemo(memo.id)}
+                style={styles.inlineBtn}
+                onPress={() => { deleteMemo(memo.id); setDeletingId(null); }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <Check color={colors.success} size={16} />
               </TouchableOpacity>
               <TouchableOpacity 
-                style={[styles.confirmBtn, { backgroundColor: colors.closeBtnBg }]}
+                style={styles.inlineBtn}
                 onPress={() => setDeletingId(null)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <X color={colors.textSecondary} size={16} />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity 
-              style={[styles.actionBtn, { backgroundColor: colors.closeBtnBg }]}
+              style={styles.inlineBtn}
               onPress={() => setDeletingId(memo.id)}
+              activeOpacity={0.6}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Trash2 color={colors.textTertiary} size={18} />
+              <Trash2 color={colors.textTertiary} size={16} />
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </LinearGradient>
     );
   };
 
@@ -115,12 +125,32 @@ export default function VoiceMemosList() {
             { backgroundColor: isRecording ? colors.dangerBg : colors.accentBg, borderColor: isRecording ? colors.danger : `${colors.accent}20` }
           ]}
           onPressIn={() => {
+            setDeletingId(null);
             Animated.spring(scaleAnim, { toValue: 1.05, useNativeDriver: true }).start();
-            startRecording();
+            
+            if (isRecording || isToggleModeRef.current) {
+              isToggleModeRef.current = false;
+              stopRecording();
+            } else {
+              pressInTimeRef.current = Date.now();
+              startRecording();
+            }
           }}
           onPressOut={() => {
             Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
-            stopRecording();
+            
+            if (pressInTimeRef.current > 0) {
+              const holdDuration = Date.now() - pressInTimeRef.current;
+              pressInTimeRef.current = 0;
+              
+              if (holdDuration < 400) {
+                // Short tap: keep recording (toggle mode)
+                isToggleModeRef.current = true;
+              } else {
+                // Long hold: stop recording on release
+                stopRecording();
+              }
+            }
           }}
           disabled={permissionStatus === 'denied'}
           activeOpacity={0.9}
@@ -138,7 +168,7 @@ export default function VoiceMemosList() {
             ) : (
               <>
                 <Mic color={colors.accent} size={16} strokeWidth={2.5} />
-                <Text style={[styles.recordText, { color: colors.accent }]}>Hold to Record</Text>
+                <Text style={[styles.recordText, { color: colors.accent }]}>Record Memo</Text>
               </>
             )}
           </View>
@@ -172,12 +202,12 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 1,
     alignSelf: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   recordContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   recordText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
   memoList: { gap: 12 },
@@ -185,33 +215,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
+    marginBottom: 0,
   },
   memoInfo: { flex: 1 },
   memoDate: { fontFamily: 'Outfit_600SemiBold', fontSize: 14 },
-  memoDuration: { fontFamily: 'Inter_600SemiBold', fontSize: 11, marginTop: 2, opacity: 0.7 },
-  memoActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  actionBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+  memoDuration: { fontFamily: 'Inter_500Medium', fontSize: 11, marginTop: 2, opacity: 0.6 },
+  memoActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  inlineBtn: {
+    padding: 4,
   },
-  confirmRow: { flexDirection: 'row', gap: 8 },
-  confirmBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  confirmRow: { flexDirection: 'row', gap: 12 },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: 40,
-    gap: 12,
+    paddingVertical: 30,
+    gap: 10,
   },
   emptyText: {
     fontFamily: 'Inter_500Medium',
@@ -223,7 +243,7 @@ const styles = StyleSheet.create({
   permissionNotice: {
     padding: 12,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,

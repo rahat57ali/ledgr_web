@@ -244,14 +244,19 @@ export default function GroceryListDetailModal({ visible, listId, onClose }: Pro
   };
 
   const handleDeleteList = () => {
-    Alert.alert(
-      'Delete List',
-      'This will permanently delete the list and all attached receipt photos. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: async () => { await deleteList(list.id); onClose(); showSnackbar('List deleted', 'success'); } }
-      ]
-    );
+    showAlert({
+      title: 'Delete List',
+      message: 'This will permanently delete the list and all attached receipt photos. This cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmVariant: 'danger',
+      Icon: Trash2,
+      onConfirm: async () => {
+        hideAlert();
+        await deleteList(list.id);
+        onClose();
+        showSnackbar('List deleted', 'success');
+      }
+    });
   };
 
   const handleLogExpenses = () => {
@@ -690,10 +695,9 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'center', 
     gap: 8, 
-    height: 52, 
-    borderRadius: 16, 
-    borderWidth: 1.5, 
-    borderStyle: 'dashed', 
+    height: 44, 
+    borderRadius: 100, 
+    borderWidth: 1, 
     marginTop: 16
   },
   addItemBtnText: { fontFamily: 'Outfit_700Bold', fontSize: 14 },
