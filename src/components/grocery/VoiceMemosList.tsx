@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Animated, PanResponder } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Mic, Play, Pause, Trash2, Check, X, Circle, Info } from 'lucide-react-native';
 import { useThemeColors } from '../../lib/ThemeContext';
@@ -19,6 +19,46 @@ export default function VoiceMemosList() {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const pressInTimeRef = React.useRef(0);
   const isToggleModeRef = React.useRef(false);
+
+  const recordPanResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => permissionStatus !== 'denied',
+      onPanResponderGrant: () => {
+        setDeletingId(null);
+        Animated.spring(scaleAnim, { toValue: 1.05, useNativeDriver: true }).start();
+        
+        if (isRecording || isToggleModeRef.current) {
+          isToggleModeRef.current = false;
+          stopRecording();
+        } else {
+          pressInTimeRef.current = Date.now();
+          startRecording();
+        }
+      },
+      onPanResponderRelease: () => {
+        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+        
+        if (pressInTimeRef.current > 0) {
+          const holdDuration = Date.now() - pressInTimeRef.current;
+          pressInTimeRef.current = 0;
+          
+          if (holdDuration < 400) {
+            // Short tap: keep recording (toggle mode)
+            isToggleModeRef.current = true;
+          } else {
+            // Long hold: stop recording on release
+            stopRecording();
+          }
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
+        stopRecording();
+        pressInTimeRef.current = 0;
+        isToggleModeRef.current = false;
+      }
+    })
+  ).current;
 
   useEffect(() => {
     if (isRecording) {
@@ -118,43 +158,20 @@ export default function VoiceMemosList() {
         </View>
       )}
 
-      <Animated.View style={{ transform: [{ scale: scaleAnim }], alignSelf: 'center', width: 'auto' }}>
-        <TouchableOpacity
-          style={[
-            styles.recordBtn, 
-            { backgroundColor: isRecording ? colors.dangerBg : colors.accentBg, borderColor: isRecording ? colors.danger : `${colors.accent}20` }
-          ]}
-          onPressIn={() => {
-            setDeletingId(null);
-            Animated.spring(scaleAnim, { toValue: 1.05, useNativeDriver: true }).start();
-            
-            if (isRecording || isToggleModeRef.current) {
-              isToggleModeRef.current = false;
-              stopRecording();
-            } else {
-              pressInTimeRef.current = Date.now();
-              startRecording();
-            }
-          }}
-          onPressOut={() => {
-            Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true }).start();
-            
-            if (pressInTimeRef.current > 0) {
-              const holdDuration = Date.now() - pressInTimeRef.current;
-              pressInTimeRef.current = 0;
-              
-              if (holdDuration < 400) {
-                // Short tap: keep recording (toggle mode)
-                isToggleModeRef.current = true;
-              } else {
-                // Long hold: stop recording on release
-                stopRecording();
-              }
-            }
-          }}
-          disabled={permissionStatus === 'denied'}
-          activeOpacity={0.9}
-        >
+      <Animated.View 
+        style={[
+          styles.recordBtn, 
+          { 
+            backgroundColor: isRecording ? colors.dangerBg : colors.accentBg, 
+            borderColor: isRecording ? colors.danger : `${colors.accent}20`,
+            transform: [{ scale: scaleAnim }], 
+            alignSelf: 'center', 
+            width: 'auto',
+            opacity: permissionStatus === 'denied' ? 0.5 : 1
+          }
+        ]}
+        {...(permissionStatus !== 'denied' ? recordPanResponder.panHandlers : {})}
+      >
           <View style={styles.recordContent}>
             {isRecording ? (
               <>
@@ -172,7 +189,6 @@ export default function VoiceMemosList() {
               </>
             )}
           </View>
-        </TouchableOpacity>
       </Animated.View>
 
       <View style={styles.memoList}>

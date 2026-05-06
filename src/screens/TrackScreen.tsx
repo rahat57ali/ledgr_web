@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Platform, ScrollView, Keyboard, Dimensions, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, Platform, ScrollView, Keyboard, Dimensions, Animated, PanResponder } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,6 +47,30 @@ export default function TrackScreen() {
   const [categoryLayouts, setCategoryLayouts] = useState<Record<string, { x: number, width: number }>>({});
   const toggleAnim = useRef(new Animated.Value(mode === 'expense' ? 0 : 1)).current;
   const SCREEN_WIDTH = Dimensions.get('window').width;
+
+  const modeRef = useRef(mode);
+  useEffect(() => { modeRef.current = mode; }, [mode]);
+
+  const swipeResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        const { dx, dy } = gestureState;
+        // Only capture intentional horizontal swipes (min 25px distance, mostly horizontal)
+        return Math.abs(dx) > 25 && Math.abs(dx) > Math.abs(dy) * 1.5;
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const { dx, vx } = gestureState;
+        const currentMode = modeRef.current;
+        // Threshold: >50px distance or high velocity
+        if (dx < -50 || vx < -0.5) {
+          if (currentMode === 'expense') handleModeSwitch('grocery');
+        } else if (dx > 50 || vx > 0.5) {
+          if (currentMode === 'grocery') handleModeSwitch('expense');
+        }
+      },
+    })
+  ).current;
 
   const isAtStart = scrollX <= 5;
   const isAtEnd = scrollX >= (contentWidth - viewWidth - 5);
@@ -246,16 +270,17 @@ export default function TrackScreen() {
           </View>
         </View>
 
-        <ScrollView
-          ref={horizontalScrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={onHorizontalScrollEnd}
-          scrollEventThrottle={16}
-          bounces={false}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={{ flex: 1 }} {...swipeResponder.panHandlers}>
+          <ScrollView
+            ref={horizontalScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={false} // Disable native scroll to enforce PanResponder thresholds
+          >
           {/* TRACK EXPENSE PAGE */}
           <KeyboardAwareScrollView
             style={{ width: SCREEN_WIDTH }}
@@ -489,6 +514,7 @@ export default function TrackScreen() {
           <GroceryListsView />
         </View>
       </ScrollView>
+        </View>
 
       <EditExpenseModal
         visible={isEditModalVisible}
