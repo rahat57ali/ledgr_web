@@ -22,7 +22,10 @@ export default function VoiceMemosList() {
 
   const recordPanResponder = React.useRef(
     PanResponder.create({
+      onStartShouldSetPanResponderCapture: () => permissionStatus !== 'denied',
+      onMoveShouldSetPanResponderCapture: () => permissionStatus !== 'denied',
       onStartShouldSetPanResponder: () => permissionStatus !== 'denied',
+      onMoveShouldSetPanResponder: () => permissionStatus !== 'denied',
       onPanResponderGrant: () => {
         setDeletingId(null);
         Animated.spring(scaleAnim, { toValue: 1.05, useNativeDriver: true }).start();
