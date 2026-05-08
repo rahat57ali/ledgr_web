@@ -27,7 +27,12 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker",
-      "expo-av"
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow LEDGR to access your microphone to record voice memos."
+        }
+      ]
     ],
     "extra": {
       "eas": {

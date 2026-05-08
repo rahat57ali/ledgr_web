@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Audio } from 'expo-av';
+import { AudioModule, useAudioRecorder, RecordingPresets, createAudioPlayer, AudioPlayer } from 'expo-audio';
 import { VoiceMemo } from './store';
 
 const STORAGE_KEY = 'ledgr_voice_memos';
@@ -36,11 +36,13 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
   const [currentlyPlayingId, setCurrentlyPlayingId] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const playerRef = useRef<AudioPlayer | null>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const playCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const appState = useRef(AppState.currentState);
   const isUserHoldingRef = useRef(false);
+  const recordingStartTimeRef = useRef(0);
 
   // Initialize
   useEffect(() => {
@@ -59,8 +61,8 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
       setIsLoaded(true);
 
       // Check permissions
-      const { status } = await Audio.getPermissionsAsync();
-      setPermissionStatus(status as any);
+      const status = await AudioModule.getRecordingPermissionsAsync();
+      setPermissionStatus(status.status as any);
     })();
 
     // AppState listener for interruptions
@@ -68,14 +70,16 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       subscription.remove();
-      if (recordingRef.current) stopRecording();
-      if (soundRef.current) soundRef.current.unloadAsync();
+      if (audioRecorder.isRecording) stopRecording();
+      if (playerRef.current) {
+        playerRef.current.release();
+      }
     };
   }, []);
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
-      if (recordingRef.current) {
+      if (audioRecorder.isRecording) {
         stopRecording();
       }
     }
@@ -83,9 +87,9 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const requestPermissions = async () => {
-    const { status } = await Audio.requestPermissionsAsync();
-    setPermissionStatus(status as any);
-    return status === 'granted';
+    const status = await AudioModule.requestRecordingPermissionsAsync();
+    setPermissionStatus(status.status as any);
+    return status.granted;
   };
 
   const startRecording = async () => {
@@ -99,37 +103,29 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
 
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
+      await audioRecorder.prepareToRecordAsync();
 
       // If user released while we were initializing, stop immediately
       if (!isUserHoldingRef.current) {
-        try {
-          await recording.stopAndUnloadAsync();
-        } catch (e) {
-          // Ignore 'no valid audio data' error for very fast aborts
-        }
         return;
       }
 
-      recordingRef.current = recording;
+      await audioRecorder.record();
       setIsRecording(true);
       setRecordingDuration(0);
+      recordingStartTimeRef.current = Date.now();
 
-      durationIntervalRef.current = setInterval(async () => {
-        if (recordingRef.current) {
-          const status = await recordingRef.current.getStatusAsync();
-          setRecordingDuration(status.durationMillis);
+      durationIntervalRef.current = setInterval(() => {
+        const elapsed = Date.now() - recordingStartTimeRef.current;
+        setRecordingDuration(elapsed);
 
-          if (status.durationMillis >= MAX_DURATION_MS) {
-            stopRecording();
-          }
+        if (elapsed >= MAX_DURATION_MS) {
+          stopRecording();
         }
       }, 100);
     } catch (err) {
@@ -140,29 +136,31 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
 
   const stopRecording = async () => {
     isUserHoldingRef.current = false;
-    if (!recordingRef.current) return;
+
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
 
     try {
-      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
+      if (audioRecorder.isRecording) {
+        await audioRecorder.stop();
+      }
       
-      await recordingRef.current.stopAndUnloadAsync();
-      const uri = recordingRef.current.getURI();
+      const uri = audioRecorder.uri;
       setIsRecording(false);
-      recordingRef.current = null;
 
       if (uri) {
         const filename = `memo_${Date.now()}.m4a`;
         const destUri = MEMO_DIR + filename;
         await FileSystem.moveAsync({ from: uri, to: destUri });
 
-        const { sound, status } = await Audio.Sound.createAsync({ uri: destUri });
-        const durationMs = (status as any).durationMillis || 0;
-        await sound.unloadAsync();
+        const finalDurationMs = Date.now() - recordingStartTimeRef.current;
 
         const newMemo: VoiceMemo = {
           id: Date.now().toString(),
           uri: destUri,
-          durationMs,
+          durationMs: finalDurationMs > 0 ? finalDurationMs : 1000, // Fallback
           createdAt: new Date().toISOString(),
         };
 
@@ -171,47 +169,57 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
+      await AudioModule.setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
       });
     } catch (err) {
       console.error('Failed to stop recording', err);
+      setIsRecording(false);
     }
   };
 
   const playMemo = async (memoId: string) => {
+    if (playCheckIntervalRef.current) {
+        clearInterval(playCheckIntervalRef.current);
+    }
+
     // Stop current playback if any
-    if (soundRef.current) {
-      await soundRef.current.stopAsync();
-      await soundRef.current.unloadAsync();
-      soundRef.current = null;
+    if (playerRef.current) {
+      playerRef.current.pause();
+      playerRef.current.release();
+      playerRef.current = null;
     }
 
     const memo = memos.find(m => m.id === memoId);
     if (!memo) return;
 
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: memo.uri },
-        { shouldPlay: true }
-      );
-      soundRef.current = sound;
+      const player = createAudioPlayer(memo.uri);
+      playerRef.current = player;
       setCurrentlyPlayingId(memoId);
 
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && status.didJustFinish) {
-          setCurrentlyPlayingId(null);
-        }
-      });
+      player.play();
+
+      playCheckIntervalRef.current = setInterval(() => {
+          if (playerRef.current === player) {
+              if (!player.playing) {
+                  setCurrentlyPlayingId(null);
+                  if (playCheckIntervalRef.current) clearInterval(playCheckIntervalRef.current);
+              }
+          } else {
+              if (playCheckIntervalRef.current) clearInterval(playCheckIntervalRef.current);
+          }
+      }, 500);
+
     } catch (err) {
       console.error('Failed to play memo', err);
     }
   };
 
   const pauseMemo = async () => {
-    if (soundRef.current) {
-      await soundRef.current.pauseAsync();
+    if (playerRef.current) {
+      playerRef.current.pause();
       setCurrentlyPlayingId(null);
     }
   };
@@ -249,8 +257,6 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
       const dirInfo = await FileSystem.getInfoAsync(MEMO_DIR);
       if (!dirInfo.exists) return 0;
 
-      // In real Expo FileSystem, getInfoAsync on a directory doesn't always return size
-      // We might need to iterate over files
       const files = await FileSystem.readDirectoryAsync(MEMO_DIR);
       let totalSize = 0;
       for (const file of files) {
