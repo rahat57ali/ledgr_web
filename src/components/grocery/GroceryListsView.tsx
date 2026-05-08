@@ -94,15 +94,7 @@ export default function GroceryListsView({ scrollContainerStyle }: Props) {
             </View>
           </View>
 
-          <View style={[styles.progressBarBg, { backgroundColor: colors.divider, height: 4, marginTop: 12 }]}>
-            <View style={[
-              styles.progressBarFill,
-              {
-                width: totalItems > 0 ? `${(boughtItems / totalItems) * 100}%` : '0%',
-                backgroundColor: isComplete ? colors.success : colors.accent
-              }
-            ]} />
-          </View>
+
         </LinearGradient>
       </TouchableOpacity>
     );
@@ -266,10 +258,10 @@ const styles = StyleSheet.create({
   createBtnText: { fontFamily: 'Outfit_700Bold', fontSize: 15 },
 
   listCard: {
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 16,
+    padding: 12,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   cardMain: {
     flexDirection: 'row',
@@ -277,18 +269,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   cardIconBox: {
-    width: 44,
-    height: 44,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardCenter: { flex: 1 },
-  cardTitle: { fontFamily: 'Outfit_700Bold', fontSize: 16 },
-  cardDate: { fontFamily: 'Inter_600SemiBold', fontSize: 10, marginTop: 2, opacity: 0.6 },
+  cardTitle: { fontFamily: 'Outfit_700Bold', fontSize: 14 },
+  cardDate: { fontFamily: 'Inter_600SemiBold', fontSize: 9, marginTop: 2, opacity: 0.6 },
   cardRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardStatsColumn: { alignItems: 'flex-end', minWidth: 60 },
-  statValue: { fontFamily: 'Outfit_800ExtraBold', fontSize: 18, lineHeight: 20 },
+  cardStatsColumn: { alignItems: 'flex-end', minWidth: 50 },
+  statValue: { fontFamily: 'Outfit_800ExtraBold', fontSize: 16, lineHeight: 18 },
   statLabel: { fontFamily: 'Inter_800ExtraBold', fontSize: 8, letterSpacing: 0.5 },
   photoBadge: {
     flexDirection: 'row',
