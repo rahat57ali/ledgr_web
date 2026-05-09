@@ -23,7 +23,7 @@ interface GroceryContextType {
   markComplete: (id: string) => Promise<void>;
   clearCompletedLists: () => Promise<void>;
   getStorageSize: () => Promise<number>;
-  logAsExpenses: (listId: string) => Promise<void>;
+  logAsExpenses: (listId: string) => Promise<{ success: boolean; count: number; message: string }>;
 }
 
 const GroceryContext = createContext<GroceryContextType | undefined>(undefined);
@@ -260,16 +260,23 @@ export const GroceryProvider = ({ children }: { children: ReactNode }) => {
 
   const logAsExpenses = async (listId: string) => {
     const list = lists.find(l => l.id === listId);
-    if (!list) return;
-    const boughtItems = list.items.filter(i => i.isBought && i.estimatedPrice > 0);
+    if (!list) return { success: false, count: 0, message: 'List not found' };
+    
+    const boughtItems = list.items.filter(i => i.isBought);
+    if (boughtItems.length === 0) return { success: false, count: 0, message: 'No items marked as bought' };
+
+    const itemsWithPrice = boughtItems.filter(i => i.estimatedPrice > 0);
+    if (itemsWithPrice.length === 0) return { success: false, count: 0, message: 'None of the bought items have prices' };
+
     // Group by category
     const grouped: Record<string, { total: number; names: string[] }> = {};
-    for (const item of boughtItems) {
+    for (const item of itemsWithPrice) {
       const cat = item.category;
       if (!grouped[cat]) grouped[cat] = { total: 0, names: [] };
       grouped[cat].total += item.estimatedPrice * item.quantity;
       grouped[cat].names.push(item.name);
     }
+    
     // Create one expense per category
     for (const [cat, data] of Object.entries(grouped)) {
       const name = data.names.length <= 2
@@ -282,6 +289,12 @@ export const GroceryProvider = ({ children }: { children: ReactNode }) => {
         date: new Date().toISOString(),
       });
     }
+    
+    return { 
+      success: true, 
+      count: itemsWithPrice.length, 
+      message: `Successfully logged ${itemsWithPrice.length} items across ${Object.keys(grouped).length} categories.` 
+    };
   };
 
   return (

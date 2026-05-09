@@ -2,7 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
-import { AudioModule, useAudioRecorder, RecordingPresets, createAudioPlayer, AudioPlayer } from 'expo-audio';
+import { 
+  AudioModule, useAudioRecorder, RecordingPresets, createAudioPlayer, AudioPlayer,
+  getRecordingPermissionsAsync, requestRecordingPermissionsAsync, setAudioModeAsync
+} from 'expo-audio';
 import { VoiceMemo } from './store';
 
 const STORAGE_KEY = 'ledgr_voice_memos';
@@ -61,7 +64,7 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
       setIsLoaded(true);
 
       // Check permissions
-      const status = await AudioModule.getRecordingPermissionsAsync();
+      const status = await getRecordingPermissionsAsync();
       setPermissionStatus(status.status as any);
     })();
 
@@ -70,9 +73,8 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       subscription.remove();
-      if (audioRecorder.isRecording) stopRecording();
       if (playerRef.current) {
-        playerRef.current.release();
+        playerRef.current.remove();
       }
     };
   }, []);
@@ -87,7 +89,7 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const requestPermissions = async () => {
-    const status = await AudioModule.requestRecordingPermissionsAsync();
+    const status = await requestRecordingPermissionsAsync();
     setPermissionStatus(status.status as any);
     return status.granted;
   };
@@ -103,19 +105,31 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      await AudioModule.setAudioModeAsync({
+      await setAudioModeAsync({
         allowsRecording: true,
         playsInSilentMode: true,
       });
 
-      await audioRecorder.prepareToRecordAsync();
+      try {
+        await audioRecorder.prepareToRecordAsync();
+      } catch (prepareErr) {
+        console.error('Failed to prepare recorder', prepareErr);
+        isUserHoldingRef.current = false;
+        return;
+      }
 
       // If user released while we were initializing, stop immediately
       if (!isUserHoldingRef.current) {
         return;
       }
 
-      await audioRecorder.record();
+      try {
+        await audioRecorder.record();
+      } catch (recordErr) {
+        console.error('Failed to start recording on native device', recordErr);
+        isUserHoldingRef.current = false;
+        return;
+      }
       setIsRecording(true);
       setRecordingDuration(0);
       recordingStartTimeRef.current = Date.now();
@@ -143,11 +157,16 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      if (audioRecorder.isRecording) {
-        await audioRecorder.stop();
+      let uri = null;
+      try {
+        if (audioRecorder.isRecording) {
+          await audioRecorder.stop();
+        }
+        uri = audioRecorder.uri;
+      } catch (nativeErr) {
+        console.warn('Native recorder stop/uri access failed', nativeErr);
       }
       
-      const uri = audioRecorder.uri;
       setIsRecording(false);
 
       if (uri) {
@@ -174,7 +193,7 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
         });
       }
 
-      await AudioModule.setAudioModeAsync({
+      await setAudioModeAsync({
         allowsRecording: false,
         playsInSilentMode: true,
       });
@@ -192,7 +211,7 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
     // Stop current playback if any
     if (playerRef.current) {
       playerRef.current.pause();
-      playerRef.current.release();
+      playerRef.current.remove();
       playerRef.current = null;
     }
 

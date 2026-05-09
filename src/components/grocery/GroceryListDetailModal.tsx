@@ -261,7 +261,10 @@ export default function GroceryListDetailModal({ visible, listId, onClose }: Pro
 
   const handleLogExpenses = () => {
     const boughtWithPrice = list.items.filter(i => i.isBought && i.estimatedPrice > 0);
-    if (boughtWithPrice.length === 0) return;
+    if (boughtWithPrice.length === 0) {
+      showSnackbar('No bought items with prices found to log.', 'warning');
+      return;
+    }
 
     showAlert({
       title: 'Log as Expenses',
@@ -269,9 +272,13 @@ export default function GroceryListDetailModal({ visible, listId, onClose }: Pro
       confirmLabel: 'Log',
       Icon: Receipt,
       onConfirm: async () => {
-        await logAsExpenses(list.id);
         hideAlert();
-        showSnackbar('Expenses logged!', 'success');
+        const result = await logAsExpenses(list.id);
+        if (result.success) {
+          showSnackbar(result.message, 'success');
+        } else {
+          showSnackbar(result.message, 'error');
+        }
       }
     });
   };

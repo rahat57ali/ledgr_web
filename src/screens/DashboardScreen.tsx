@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { View, Text, ScrollView, StyleSheet, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,71 +42,48 @@ export default function DashboardScreen() {
   const [isDailyDetailVisible, setIsDailyDetailVisible] = useState(false);
   const [isTransactionsModalVisible, setIsTransactionsModalVisible] = useState(false);
 
-  const currentMonthExpenses = React.useMemo(() => {
+  const stats = useMemo(() => {
     const activeMonth = budget.budgetMonth || format(new Date(), 'yyyy-MM');
-    return expenses.filter(e => format(new Date(e.date), 'yyyy-MM') === activeMonth);
-  }, [expenses, budget.budgetMonth]);
+    const filteredExpenses = expenses.filter(e => format(new Date(e.date), 'yyyy-MM') === activeMonth);
+    const spent = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const remaining = budget.total - spent;
+    const days = getDaysRemainingInMonth();
+    const allowance = Math.max(0, remaining / days);
+    
+    const now = new Date();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const target = budget.total / daysInMonth;
+    const ratio = allowance / target;
 
-  const totalSpent = currentMonthExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const remainingBudget = budget.total - totalSpent;
+    const totals: Record<string, number> = {};
+    filteredExpenses.forEach(e => {
+      totals[e.category] = (totals[e.category] || 0) + e.amount;
+    });
 
-  const now = new Date();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysLeft = getDaysRemainingInMonth();
-  const dailyAllowance = Math.max(0, remainingBudget / daysLeft);
+    let status;
+    if (ratio >= 1.5) status = { label: 'COMFORTABLE', color: colors.success, bgColor: colors.successBg, description: "You're spending significantly less than your planned daily average.", threshold: ">= 1.5x target", icon: CheckCircle2 };
+    else if (ratio >= 1.0) status = { label: 'ON TRACK', color: colors.warning, bgColor: colors.warningBg, description: "Your daily spending is perfectly aligned with your monthly budget goal.", threshold: "1.0x to 1.5x target", icon: TrendingUp };
+    else if (ratio >= 0.6) status = { label: 'TIGHT', color: colors.warning, bgColor: colors.warningBg, description: "You're slightly below your daily target. Prioritize essential spending.", threshold: "0.6x to 1.0x target", icon: Minus };
+    else if (ratio >= 0.3) status = { label: 'CRITICAL', color: colors.danger, bgColor: colors.dangerBg, description: "Your available daily budget is very low. High alert!", threshold: "0.3x to 0.6x target", icon: AlertCircle };
+    else status = { label: 'OVERSPENT', color: colors.danger, bgColor: colors.dangerBg, description: "You have exceeded your sustainable daily limit.", threshold: "< 0.3x target", icon: TrendingDown };
 
-  const dailyTarget = budget.total / daysInMonth;
-  const ratio = dailyAllowance / dailyTarget;
-
-  const getDailyStatus = () => {
-    if (ratio >= 1.5) return {
-      label: 'COMFORTABLE',
-      color: colors.success,
-      bgColor: colors.successBg,
-      description: "You're spending significantly less than your planned daily average. You have breathing room for miscellaneous costs.",
-      threshold: ">= 1.5x target",
-      icon: CheckCircle2
-    };
-    if (ratio >= 1.0) return {
-      label: 'ON TRACK',
-      color: colors.warning,
-      bgColor: colors.warningBg,
-      description: "Your daily spending is perfectly aligned with your monthly budget goal. Keep maintaining this pace.",
-      threshold: "1.0x to 1.5x target",
-      icon: TrendingUp
-    };
-    if (ratio >= 0.6) return {
-      label: 'TIGHT',
-      color: colors.warning,
-      bgColor: colors.warningBg,
-      description: "You're slightly below your daily target. It's time to prioritize essential spending only to finish the month on budget.",
-      threshold: "0.6x to 1.0x target",
-      icon: Minus
-    };
-    if (ratio >= 0.3) return {
-      label: 'CRITICAL',
-      color: colors.danger,
-      bgColor: colors.dangerBg,
-      description: "Your available daily budget is very low. High alert! Immediate reduction in non-essential spending is required.",
-      threshold: "0.3x to 0.6x target",
-      icon: AlertCircle
-    };
     return {
-      label: 'OVERSPENT',
-      color: colors.danger,
-      bgColor: colors.dangerBg,
-      description: "You have exceeded your sustainable daily limit. Every rupee spent now contributes to a monthly deficit.",
-      threshold: "< 0.3x target",
-      icon: TrendingDown
+      currentMonthExpenses: filteredExpenses,
+      totalSpent: spent,
+      remainingBudget: remaining,
+      daysLeft: days,
+      dailyAllowance: allowance,
+      dailyTarget: target,
+      ratio,
+      dailyStatus: status,
+      categoryTotals: totals
     };
-  };
+  }, [expenses, budget, colors]);
 
-  const dailyStatus = getDailyStatus();
-
-  const categoryTotals: Record<string, number> = {};
-  currentMonthExpenses.forEach(e => {
-    categoryTotals[e.category] = (categoryTotals[e.category] || 0) + e.amount;
-  });
+  const { 
+    currentMonthExpenses, totalSpent, remainingBudget, daysLeft, 
+    dailyAllowance, dailyTarget, ratio, dailyStatus, categoryTotals 
+  } = stats;
 
   const isOverspent = remainingBudget < 0;
 
