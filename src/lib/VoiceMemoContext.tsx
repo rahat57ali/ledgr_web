@@ -151,22 +151,27 @@ export const VoiceMemoProvider = ({ children }: { children: ReactNode }) => {
       setIsRecording(false);
 
       if (uri) {
-        const filename = `memo_${Date.now()}.m4a`;
+        const timestamp = Date.now();
+        const filename = `memo_${timestamp}.m4a`;
         const destUri = MEMO_DIR + filename;
         await FileSystem.moveAsync({ from: uri, to: destUri });
 
-        const finalDurationMs = Date.now() - recordingStartTimeRef.current;
+        const finalDurationMs = timestamp - recordingStartTimeRef.current;
 
         const newMemo: VoiceMemo = {
-          id: Date.now().toString(),
+          id: timestamp.toString(),
           uri: destUri,
-          durationMs: finalDurationMs > 0 ? finalDurationMs : 1000, // Fallback
-          createdAt: new Date().toISOString(),
+          durationMs: finalDurationMs > 0 ? finalDurationMs : 1000,
+          createdAt: new Date(timestamp).toISOString(),
         };
 
-        const updated = [newMemo, ...memos];
-        setMemos(updated);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        setMemos(prev => {
+          const updated = [newMemo, ...prev];
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(e => 
+            console.error('Failed to save memos to storage', e)
+          );
+          return updated;
+        });
       }
 
       await AudioModule.setAudioModeAsync({
