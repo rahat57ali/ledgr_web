@@ -2,12 +2,21 @@
 
 # dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+/.next/
+/out/
 
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
+
+# Production
+build/
 
 # Native
 .kotlin/
@@ -25,16 +34,31 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+.pnpm-debug.*
 
 # macOS
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Supabase & Local Env
+# Crucial: This prevents your API keys from leaking to GitHub
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env.local
 
-# typescript
+# TypeScript
 *.tsbuildinfo
+next-env.d.ts
+
+# System Files
+.DS_Store
+.DS_Store?
+._*
+Thumds.db
+*.pem
 
 # generated native folders
 /ios
