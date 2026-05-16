@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Info } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { useCurrentMonthExpenseSummary, useLedgr } from "@/lib/ledgr-provider";
 import { getDailyAllowance, getDailyStatus, getDailyStatusDescription } from "@/lib/calculations";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { useFocusTrap } from "@/lib/use-focus-trap";
 import { TransactionSearchModal } from "@/components/transaction-search-modal";
