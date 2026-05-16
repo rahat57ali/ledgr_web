@@ -64,11 +64,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="mt-5 space-y-3">
-          <Input type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
-          <Input type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <label className="block font-inter text-sm font-bold text-[var(--text-secondary)]">
+            Email
+            <Input aria-invalid={Boolean(error)} aria-describedby={error ? "auth-error" : undefined} type="email" placeholder="Email" value={email} onChange={(event) => setEmail(event.target.value)} />
+          </label>
+          <label className="block font-inter text-sm font-bold text-[var(--text-secondary)]">
+            Password
+            <Input aria-invalid={Boolean(error)} aria-describedby={error ? "auth-error" : undefined} type="password" placeholder="Password" value={password} onChange={(event) => setPassword(event.target.value)} />
+          </label>
         </div>
 
-        {error ? <p className="font-inter mt-3 text-sm font-bold text-[var(--danger)]">{error}</p> : null}
+        {error ? <p id="auth-error" className="font-inter mt-3 text-sm font-bold text-[var(--danger)]">{error}</p> : null}
 
         <Button
           className="mt-5 w-full"

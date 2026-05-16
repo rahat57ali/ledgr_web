@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, X } from "lucide-react";
 import { Expense } from "@/lib/types";
 import { Button, Card, Input, Select } from "@/components/ui";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 export function ExpenseEditorModal({
   expense,
@@ -28,6 +29,9 @@ export function ExpenseEditorModal({
   const [category, setCategory] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  useFocusTrap(dialogRef, Boolean(expense));
 
   useEffect(() => {
     if (!expense) return;
@@ -42,10 +46,10 @@ export function ExpenseEditorModal({
 
   return (
     <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[var(--overlay)] p-4">
-      <Card className="w-full max-w-xl bg-[var(--surface-elevated)]">
+      <Card ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="expense-editor-title" className="w-full max-w-xl bg-[var(--surface-elevated)]">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="font-outfit text-2xl font-extrabold">Edit Expense</h3>
+            <h3 id="expense-editor-title" className="font-outfit text-2xl font-extrabold">Edit Expense</h3>
             <p className="font-inter text-sm font-medium text-[var(--text-secondary)]">Adjust the transaction or remove it entirely.</p>
           </div>
           <button type="button" className="rounded-2xl p-2 text-[var(--text-muted)]" onClick={onClose}>
@@ -54,29 +58,41 @@ export function ExpenseEditorModal({
         </div>
 
         <div className="mt-5 grid gap-3">
-          <Input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" />
-          <Input type="number" min="0" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Amount" />
-          <Input type="date" value={expenseDate} onChange={(event) => setExpenseDate(event.target.value)} />
-          <Select value={category} onChange={(event) => setCategory(event.target.value)}>
+          <label className="font-inter text-sm font-bold text-[var(--text-secondary)]">
+            Description
+            <Input aria-label="Expense description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Description" />
+          </label>
+          <label className="font-inter text-sm font-bold text-[var(--text-secondary)]">
+            Amount
+            <Input aria-label="Expense amount" type="number" min="0" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Amount" />
+          </label>
+          <label className="font-inter text-sm font-bold text-[var(--text-secondary)]">
+            Date
+            <Input aria-label="Expense date" type="date" value={expenseDate} onChange={(event) => setExpenseDate(event.target.value)} />
+          </label>
+          <label className="font-inter text-sm font-bold text-[var(--text-secondary)]">
+            Category
+            <Select aria-label="Expense category" value={category} onChange={(event) => setCategory(event.target.value)}>
             {categories.map((entry) => (
               <option key={entry} value={entry}>
                 {entry}
               </option>
             ))}
-          </Select>
+            </Select>
+          </label>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {confirmDelete ? (
-              <>
-                <Button variant="danger" onClick={() => void onDelete()}>
-                  Confirm Delete
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-                  Cancel
-                </Button>
-              </>
+              <div className="flex items-center gap-2">
+                <button type="button" className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--success)]/15 text-[var(--success)]" onClick={() => void onDelete()}>
+                  <Check size={16} />
+                </button>
+                <button type="button" className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--danger)]/15 text-[var(--danger)]" onClick={() => setConfirmDelete(false)}>
+                  <X size={16} />
+                </button>
+              </div>
             ) : (
               <Button variant="ghost" className="text-[var(--danger)]" onClick={() => setConfirmDelete(true)}>
                 Delete Expense

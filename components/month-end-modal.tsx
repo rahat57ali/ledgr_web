@@ -1,18 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, ArrowRightCircle, CalendarDays, CheckCircle2, ChevronRight, PencilLine, Trash2 } from "lucide-react";
 import { useCurrentMonthExpenseSummary, useLedgr } from "@/lib/ledgr-provider";
 import { filterExpensesByMonth, getMonthlyInsights, sumExpenses } from "@/lib/calculations";
 import { Button, Card, Input, Pill } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
+import { useFocusTrap } from "@/lib/use-focus-trap";
 
 export function MonthEndModal() {
   const router = useRouter();
   const { rolloverRecovery, budgetConfig, categoryBudgets, expenses, resolveMonthEnd, saveRolloverStep } = useLedgr();
-  const [rolloverAmount, setRolloverAmount] = useState(0);
   const [updatedBudget, setUpdatedBudget] = useState("");
+  const updatedBudgetRef = useRef<string>("");
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const sourceMonth = rolloverRecovery?.sourceMonth;
   const previousBudget = budgetConfig;
@@ -35,15 +37,49 @@ export function MonthEndModal() {
         : [],
     [categoryBudgets, expenses, previousTotal, sourceMonth],
   );
+  const sourceMonthLabel = sourceMonth ? new Date(`${sourceMonth}-01T12:00:00`).toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "";
 
   if (!rolloverRecovery || !sourceMonth) return null;
 
+  useFocusTrap(dialogRef, true);
+
+  useEffect(() => {
+    if (!rolloverRecovery) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "hidden") return;
+      if (rolloverRecovery.step === 1) {
+        void saveRolloverStep(2, 0);
+      } else {
+        // Persist the current typed budget value alongside the step so Step 3 resumes
+        // with the user's last-entered value rather than resetting to previousTotal.
+        void saveRolloverStep(3, rolloverRecovery.rolloverAmount, updatedBudgetRef.current ? Number(updatedBudgetRef.current) : undefined);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [rolloverRecovery, saveRolloverStep]);
+
+  // Seed updatedBudget: prefer the last persisted draft (updatedBudgetTotal) so that
+  // resuming at Step 3 shows the value the user had typed before leaving, not the
+  // original budget total.
+  useEffect(() => {
+    const seed =
+      rolloverRecovery?.updatedBudgetTotal != null
+        ? String(rolloverRecovery.updatedBudgetTotal)
+        : String(previousTotal);
+    setUpdatedBudget(seed);
+    updatedBudgetRef.current = seed;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rolloverRecovery?.id]); // Only re-seed when a different recovery record loads, not on every re-render
+
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[var(--overlay)] p-4">
-      <Card className="w-full max-w-4xl bg-[var(--surface-elevated)] p-0">
+      <Card ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="month-end-title" className="w-full max-w-4xl bg-[var(--surface-elevated)] p-0">
         <div className="border-b px-6 py-5">
           <Pill className="border-transparent bg-[var(--accent)] text-black">Month End Wizard</Pill>
-          <h2 className="font-outfit mt-3 text-3xl font-extrabold">Complete {sourceMonth}</h2>
+          <h2 id="month-end-title" className="font-outfit mt-3 text-3xl font-extrabold">Complete {sourceMonthLabel}</h2>
           <p className="font-inter mt-2 text-sm font-medium text-[var(--text-secondary)]">
             This flow is required before Ledgr unlocks the new month.
           </p>
@@ -94,7 +130,6 @@ export function MonthEndModal() {
                     className="gap-2"
                     disabled={remaining <= 0}
                     onClick={async () => {
-                      setRolloverAmount(remaining);
                       await saveRolloverStep(2, remaining);
                     }}
                   >
@@ -105,7 +140,6 @@ export function MonthEndModal() {
                     variant="secondary"
                     className="gap-2"
                     onClick={async () => {
-                      setRolloverAmount(0);
                       await saveRolloverStep(2, 0);
                     }}
                   >
@@ -170,8 +204,10 @@ export function MonthEndModal() {
                   type="number"
                   min="0"
                   value={updatedBudget}
-                  onChange={(event) => setUpdatedBudget(event.target.value)}
-                  placeholder={String(previousTotal)}
+                  onChange={(event) => {
+                    setUpdatedBudget(event.target.value);
+                    updatedBudgetRef.current = event.target.value;
+                  }}
                 />
                 <Button
                   onClick={async () => {
@@ -183,7 +219,7 @@ export function MonthEndModal() {
                     router.push("/settings");
                   }}
                 >
-                  Confirm New Budget
+                  Save & Allocate Categories
                 </Button>
               </Card>
             ) : null}

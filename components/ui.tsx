@@ -1,20 +1,23 @@
 "use client";
 
+import React from "react";
 import { cn } from "@/lib/utils";
 
 export function PageTitle({
   title,
   subtitle,
+  eyebrow = "Ledgr",
   action,
 }: {
   title: string;
   subtitle?: string;
+  eyebrow?: string;
   action?: React.ReactNode;
 }) {
   return (
     <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
-        <p className="font-inter text-xs font-bold uppercase tracking-[0.28em] text-[var(--text-muted)]">Ledgr</p>
+        <p className="font-inter text-xs font-bold uppercase tracking-[0.28em] text-[var(--text-muted)]">{eyebrow}</p>
         <h1 className="font-outfit text-3xl font-extrabold text-[var(--text-primary)]">{title}</h1>
         {subtitle ? <p className="font-inter mt-1 text-sm font-medium text-[var(--text-secondary)]">{subtitle}</p> : null}
       </div>
@@ -23,13 +26,17 @@ export function PageTitle({
   );
 }
 
-export function Card({
-  className,
-  children,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(function Card(
+  {
+    className,
+    children,
+    ...props
+  },
+  ref,
+) {
   return (
     <div
+      ref={ref}
       {...props}
       className={cn(
         "rounded-[28px] border bg-[var(--card-bg)] p-5 shadow-[var(--shadow)] transition-colors",
@@ -39,7 +46,7 @@ export function Card({
       {children}
     </div>
   );
-}
+});
 
 export function Pill({
   className,
@@ -68,7 +75,7 @@ export function Input({
     <input
       {...props}
       className={cn(
-        "h-12 w-full rounded-2xl border bg-[var(--surface-bg)] px-4 font-inter text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+        "h-12 w-full rounded-2xl border bg-[var(--surface-bg)] px-4 font-inter text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:border-[var(--accent)]",
         className,
       )}
     />
@@ -83,7 +90,7 @@ export function Textarea({
     <textarea
       {...props}
       className={cn(
-        "min-h-28 w-full rounded-2xl border bg-[var(--surface-bg)] px-4 py-3 font-inter text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+        "min-h-28 w-full rounded-2xl border bg-[var(--surface-bg)] px-4 py-3 font-inter text-sm font-medium text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus-visible:border-[var(--accent)]",
         className,
       )}
     />
@@ -99,7 +106,7 @@ export function Select({
     <select
       {...props}
       className={cn(
-        "h-12 w-full rounded-2xl border bg-[var(--surface-bg)] px-4 font-inter text-sm font-medium text-[var(--text-primary)]",
+        "h-12 w-full rounded-2xl border bg-[var(--surface-bg)] px-4 font-inter text-sm font-medium text-[var(--text-primary)] focus-visible:border-[var(--accent)]",
         className,
       )}
     >
@@ -119,7 +126,7 @@ export function Button({
     <button
       {...props}
       className={cn(
-        "inline-flex h-12 items-center justify-center rounded-2xl px-5 font-outfit text-sm font-extrabold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-12 items-center justify-center rounded-2xl px-5 font-outfit text-sm font-extrabold transition focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--page-bg)] disabled:cursor-not-allowed disabled:opacity-50",
         variant === "primary" && "bg-[var(--text-primary)] text-[var(--page-bg)]",
         variant === "secondary" && "border bg-[var(--surface-bg)] text-[var(--text-primary)]",
         variant === "ghost" && "text-[var(--text-primary)]",

@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-transparent text-[var(--text-primary)]">
       <ToastViewport />
       <div className="mx-auto flex min-h-screen max-w-[1720px]">
-        <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] border-r border-[var(--border-soft)] bg-[var(--tab-bg)] backdrop-blur xl:flex xl:flex-col">
+        <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] border-r border-[var(--border-soft)] bg-[var(--tab-bg)] backdrop-blur xl:flex xl:flex-col">
           <div className="flex items-center gap-3 px-6 py-7">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--accent)] text-black">
               <ShoppingBasket size={22} />
@@ -113,16 +113,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               {theme === "dark" ? <Sun size={18} className="text-[var(--accent)]" /> : <Moon size={18} className="text-[var(--accent-secondary)]" />}
             </button>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="flex h-12 w-12 items-center justify-center rounded-2xl border bg-[var(--surface-bg)] text-[var(--danger)]"
+              aria-label="Sign Out"
+            >
+              <LogOut size={18} />
+            </button>
           </div>
         </aside>
 
-        <main className="w-full pb-28 md:ml-[92px] xl:ml-[280px]">
+        <main className="w-full pb-28 md:ml-[92px] xl:ml-[220px]">
           <div className="min-h-screen px-4 py-4 md:px-8 md:py-8">{children}</div>
         </main>
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border-soft)] bg-[var(--tab-bg)] px-3 py-2 backdrop-blur md:hidden">
-        <div className="grid grid-cols-6 gap-1">
+        <div className="flex overflow-x-auto no-scrollbar snap-x snap-mandatory gap-1 pb-safe">
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -130,12 +138,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "relative flex flex-col items-center gap-1 rounded-2xl px-1 py-2",
+                  "relative flex min-w-[72px] flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 snap-center",
                   active ? "text-[var(--accent)]" : "text-[var(--text-muted)]",
                 )}
               >
                 <item.icon size={18} />
-                <span className="font-inter text-[10px] font-bold">{item.label}</span>
+                <span className="font-inter text-xs font-bold">{item.label}</span>
                 {item.href === "/bills" && overdueBillCount > 0 ? <span className="absolute right-4 top-2 h-2 w-2 rounded-full bg-[var(--danger)]" /> : null}
               </Link>
             );

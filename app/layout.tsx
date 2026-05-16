@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${outfit.variable} ${inter.variable} font-inter`}>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className={`${outfit.variable} ${inter.variable} font-inter`} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

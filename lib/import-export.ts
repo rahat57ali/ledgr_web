@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { format } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { DEFAULT_CATEGORIES, Expense } from "@/lib/types";
 import { autoCategorize } from "@/lib/store";
 import { generateId } from "@/lib/utils";
@@ -35,8 +35,14 @@ function normalizeDate(rawDate: unknown) {
   }
 
   const text = String(rawDate ?? "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
-  return text;
+  const formats = ["yyyy-MM-dd", "dd/MM/yyyy", "MM/dd/yyyy"];
+
+  for (const pattern of formats) {
+    const parsed = parse(text, pattern, new Date());
+    if (isValid(parsed)) return format(parsed, "yyyy-MM-dd");
+  }
+
+  return null;
 }
 
 export async function importExpensesFile(file: File, existing: Expense[]) {
@@ -79,10 +85,7 @@ export async function importExpensesFile(file: File, existing: Expense[]) {
     }
 
     const derivedCategory = rawCategory || autoCategorize(description);
-    const safeCategory =
-      DEFAULT_CATEGORIES.includes(derivedCategory) || rawCategory
-        ? derivedCategory
-        : "Other";
+    const safeCategory = DEFAULT_CATEGORIES.includes(derivedCategory) ? derivedCategory : "Other";
 
     expenses.push({
       id: generateId("expense"),
