@@ -30,7 +30,11 @@ export async function middleware(request: NextRequest) {
   );
 
   // Required: do not remove. Refreshes the session token if it has expired.
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch (error) {
+    console.warn("Supabase auth session refresh skipped (network offline or timeout):", error);
+  }
 
   return supabaseResponse;
 }

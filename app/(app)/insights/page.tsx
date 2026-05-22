@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { addMonths, format, parseISO, subMonths } from "date-fns";
-import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Cell, LabelList, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { useLedgr } from "@/lib/ledgr-provider";
 import { filterExpensesByMonth, getCategoryTotals, getDynamicTips, getHighestSpendingDays, getPaceAndProjection, getRepeatPurchases, getSpendTypeBreakdown, getTopSpendingItems, getWeekOverWeek, sumExpenses } from "@/lib/calculations";
 import { getCategoryDisplayName } from "@/lib/category-label";
@@ -10,7 +10,69 @@ import { Card, EmptyState, Pill } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { AlertCircle, ArrowDownRight, ArrowUpRight, CheckCircle2, Sparkles, TrendingUp } from "lucide-react";
 
-const PIE_COLORS = ["#00F0FF", "#8A2BE2", "#10B981", "#EF4444", "#00F0FF", "#8A2BE2", "#10B981"];
+const PIE_COLORS = [
+  "#00f0ff", // Accent Cyan
+  "#8a2be2", // Accent Purple / Violet
+  "#10b981", // Success Green
+  "#ef4444", // Danger Red
+  "#f59e0b", // Amber Yellow
+  "#f97316", // Orange
+  "#3b82f6", // Royal Blue
+  "#ec4899", // Magenta/Pink
+  "#14b8a6", // Teal
+  "#6366f1", // Indigo
+  "#a855f7", // Bright Purple
+  "#84cc16", // Lime Green
+];
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-bg)] p-3 shadow-lg backdrop-blur-md">
+        <p className="font-outfit text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+          {payload[0].name}
+        </p>
+        <p className="font-outfit text-sm font-extrabold text-[var(--accent)] mt-1">
+          {formatCurrency(payload[0].value)} ({Math.round(payload[0].payload.percentage)}%)
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomBarTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-bg)] p-3 shadow-lg backdrop-blur-md">
+        <p className="font-outfit text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+          Day {payload[0].payload.day}
+        </p>
+        <p className="font-outfit text-sm font-extrabold text-[var(--accent)] mt-1">
+          {formatCurrency(payload[0].value)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const renderCustomBarLabel = (props: any) => {
+  const { x, y, width, value } = props;
+  if (!value || value <= 0) return null;
+  const formatted = value >= 1000 ? `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k` : value.toString();
+  return (
+    <text 
+      x={x + width / 2} 
+      y={y - 6} 
+      fill="var(--text-secondary)" 
+      textAnchor="middle" 
+      className="font-inter text-[8px] font-bold"
+    >
+      {formatted}
+    </text>
+  );
+};
 
 export default function InsightsPage() {
   const { expenses, categoryBudgets, budgetConfig, refreshExpenses } = useLedgr();
@@ -41,13 +103,18 @@ export default function InsightsPage() {
     return { day, amount };
   }), [monthExpenses]);
 
+  const maxAmount = useMemo(() => {
+    const amounts = chartData.map((d) => d.amount);
+    return amounts.length ? Math.max(...amounts) : 0;
+  }, [chartData]);
+
   return (
     <div className="space-y-6">
       {!monthExpenses.length ? (
         <EmptyState title={`No data for ${monthLabel}`} description="Pick another month or start logging more expenses to unlock the full insights view." />
       ) : (
         <>
-          <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_1.9fr]">
             <Card>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                 <p className="font-inter text-xs font-bold uppercase tracking-[0.22em] text-[var(--text-muted)]">Total Spending</p>
@@ -62,35 +129,73 @@ export default function InsightsPage() {
                 </div>
               </div>
               <p className="font-outfit mt-3 text-4xl font-extrabold">{formatCurrency(totalSpent)}</p>
-              <div className="mt-6 h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={categoryTotals} dataKey="amount" nameKey="category" innerRadius={70} outerRadius={110}>
-                      {categoryTotals.map((entry, index) => (
-                        <Cell key={entry.category} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(Number(value))} />
-                  </PieChart>
-                </ResponsiveContainer>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 mt-4">
+                <div className="w-[180px] h-[180px] flex-shrink-0 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie 
+                        data={categoryTotals} 
+                        dataKey="amount" 
+                        nameKey="category" 
+                        innerRadius={55} 
+                        outerRadius={75}
+                        paddingAngle={3}
+                        cornerRadius={4}
+                      >
+                        {categoryTotals.map((entry, index) => (
+                          <Cell key={entry.category} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="flex-1 w-full space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                  {categoryTotals.slice(0, 4).map((entry, index) => (
+                    <div key={entry.category} className="flex items-center justify-between p-2 rounded-xl border bg-[var(--surface-bg)]/50 hover:bg-[var(--surface-bg)] transition-colors">
+                      <div className="flex items-center gap-2.5">
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
+                        <div>
+                          <p className="font-outfit text-xs font-bold text-[var(--text-primary)]">
+                            {getCategoryDisplayName(entry.category, categoryBudgets)}
+                          </p>
+                          <p className="font-inter text-[10px] font-semibold text-[var(--text-secondary)]">
+                            {formatCurrency(entry.amount)}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-outfit text-xs font-extrabold text-[var(--accent)]">
+                        {entry.percentage}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </Card>
 
             <Card>
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <h2 className="font-outfit text-2xl font-extrabold">Daily Spending</h2>
-                  <p className="font-inter text-sm font-medium text-[var(--text-secondary)]">Full monthly rhythm, not just category totals.</p>
-                </div>
-                <Pill>{monthExpenses.length} expenses</Pill>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-outfit text-2xl font-extrabold">Daily Spending</h2>
               </div>
               <div className="mt-6 h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData}>
-                    <XAxis dataKey="day" stroke="var(--text-muted)" tickLine={false} axisLine={false} />
-                    <YAxis stroke="var(--text-muted)" tickLine={false} axisLine={false} />
-                    <Tooltip formatter={(value: number) => formatCurrency(Number(value))} />
-                    <Bar dataKey="amount" fill="#00F0FF" radius={[8, 8, 0, 0]} />
+                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }} barCategoryGap={1.5}>
+                    <XAxis dataKey="day" stroke="var(--text-muted)" tickLine={false} axisLine={false} tick={{ fontSize: 9 }} />
+                    <Tooltip content={<CustomBarTooltip />} cursor={false} />
+                    <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                      <LabelList dataKey="amount" content={renderCustomBarLabel} />
+                      {chartData.map((entry, index) => {
+                        const isMax = entry.amount > 0 && entry.amount === maxAmount;
+                        return (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={isMax ? "var(--danger)" : "var(--accent)"} 
+                          />
+                        );
+                      })}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
